@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import datetime
 import json
+from typing import Optional
 
 import typer
 from pydantic import BaseModel, parse_obj_as
 from rich.console import Console
+from rich.table import Table
 
 app = typer.Typer()
 console = Console()
 
 PALFILE_PATH = ".pal"
 AUTHOR_ENV_VAR = "PAL_AUTHOR"
+TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class EntryAlreadyExists(Exception):
@@ -98,6 +101,28 @@ def add(
     db.add_entry(entry)
     console.print(f"After {db}")
     db.write()
+
+
+@app.command()
+def log(limit: Optional[int] = typer.Option(None, "-l", "--limit")):
+    db = PalDB.load()
+    table = Table(title="Personal Activity Log")
+
+    # Prepare the columns
+    table.add_column("Timestamp", justify="right", style="cyan", no_wrap=True)
+    table.add_column("Header", justify="left", style="orange1")
+    table.add_column("Body", justify="right", overflow="ellipsis")
+
+    entries = sorted(db.entries.values(), key=lambda x: x.timestamp, reverse=True)
+    if limit is not None:
+        entries = entries[:limit]
+    # Prepare the rows
+    for entry in entries:
+        # Timestamp
+        # TODO(alvaro): Proper locale handling
+        table.add_row(entry.timestamp.strftime(TIMESTAMP_FMT), entry.header, entry.body)
+    # Print the actual table
+    console.print(table)
 
 
 @app.command()
