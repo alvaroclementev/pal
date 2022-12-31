@@ -125,7 +125,6 @@ def log(limit: Optional[int] = typer.Option(None, "-l", "--limit")):
     console.print(table)
 
 
-@app.command()
 def run() -> int:
     app()
     return 0
