@@ -19,6 +19,11 @@ isort = "*"
 flake8 = "*"
 mypy = "*"
 pytest = "*"
+
+[tool.poetry.group.lsp]
+optional = true
+
+[tool.poetry.group.lsp.dependencies]
 python-lsp-server = {extras = ["all"], version = "*"}
 mypy-ls = "*"
 pyls-flake8 = "*"
