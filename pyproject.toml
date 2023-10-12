@@ -1,36 +1,39 @@
-[tool.poetry]
-name = "pal"
-version = "0.1.0"
-description = "Personal Activity Log"
-authors = ["Alvaro Clemente <clemente.varo@gmail.com>"]
-license = "MIT"
-readme = "README.md"
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry.scripts]
+[project]
+name = "pal"
+description = "Personal Activity Log"
+version = "0.0.1"
+authors = [
+    {name = "Alvaro Clemente", email = "clemente.varo@gmail.com"},
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "typer[all]>=0.7.0",
+    "rich>=13.6.0",
+    "pydantic>=1.10.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "pytest",
+    "python-lsp-server",
+    "python-lsp-black",
+    "pylsp-mypy",
+    "pyls-isort",
+]
+
+[project.scripts]
 pal = 'pal.cli:run'
 
-[tool.poetry.dependencies]
-python = "^3.9"
-typer = {version = "^0.7.0", extras = ["all"]}
-pydantic = "^1.10.4"
 
-[tool.poetry.group.dev.dependencies]
-black = "*"
-isort = "*"
-flake8 = "*"
-mypy = "*"
-pytest = "*"
-
-[tool.poetry.group.lsp]
-optional = true
-
-[tool.poetry.group.lsp.dependencies]
-python-lsp-server = {extras = ["all"], version = "*"}
-mypy-ls = "*"
-pyls-flake8 = "*"
-pyls-isort = "*"
-python-lsp-black = "*"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.setuptools.packages.find]
+where = ["src"]
