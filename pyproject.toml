@@ -13,9 +13,7 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "typer[all]>=0.7.0",
     "rich>=13.6.0",
-    "pydantic>=1.10.4",
 ]
 
 [project.optional-dependencies]
@@ -32,7 +30,7 @@ dev = [
 ]
 
 [project.scripts]
-pal = 'pal.cli:run'
+pal = 'pal.cli:main'
 
 
 [tool.setuptools.packages.find]
