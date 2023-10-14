@@ -10,6 +10,7 @@ from pal.models import entry
 
 PAL_COMMAND_COMMIT = "commit"
 PAL_COMMAND_LOG = "log"
+PAL_COMMAND_CLEAN = "clean"
 
 
 def init_db():
@@ -46,6 +47,7 @@ def create_entry(
     if not timestamp:
         timestamp = datetime.datetime.now()
 
+    # Create an entry
     e = models.Entry(
         text=text,
         author=author,
@@ -80,6 +82,18 @@ def display_entries(
             print()
 
 
+def delete_entries(author: str, project: Optional[str]):
+    """Remove the entries that belong to the given `author` and `project`.
+
+    If the `project` is `None`, this will remove all the entries for the given user
+    """
+
+    # Find the entries
+    con = db.get_connection()
+    deleted = entry.delete_entries(con, author=author, project=project)
+    print(f"{deleted} entries deleted")
+
+
 def author_or_default(requested_author: Optional[str]) -> str:
     """Get the author for interactions.
 
@@ -112,6 +126,21 @@ def project_or_default(requested_project: Optional[str]) -> str:
     if not actual_project:
         raise setup.SetupError("could not find a project for filtering")
     return actual_project
+
+
+def handle_clean(text: str, author: Optional[str], project: Optional[str], all: bool):
+    """Handle the `clean` command for PAL"""
+
+    # Make sure PAL is setup
+    setup.ensure_setup()
+
+    # Prepare the DB for use
+    init_db()
+
+    # Handle the default values for author and project
+    actual_author = author_or_default(author)
+    actual_project = None if all else project_or_default(project)
+    delete_entries(author=actual_author, project=actual_project)
 
 
 def handle_log(author: Optional[str], project: Optional[str]):
@@ -158,11 +187,17 @@ def main():
 
     subparser = parser.add_subparsers(dest="command", metavar="command")
 
-    # Prepare the commit
+    # Prepare the commit command
     subparser.add_parser(PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log")
 
-    # Prepare the log
+    # Prepare the log command
     subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
+
+    # Prepare the clean command
+    clean_parser = subparser.add_parser(PAL_COMMAND_CLEAN, help="Clean the log entries")
+    clean_parser.add_argument(
+        "-A", "--all", help="Clean the entries for all projects for the selected"
+    )
 
     args = parser.parse_args()  # noqa: F841
     command = args.command
@@ -180,3 +215,6 @@ def main():
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(text_args)
         handle_commit(text, author=author_arg, project=project_arg)
+    elif command == PAL_COMMAND_CLEAN:
+        all = args.all
+        handle_clean(author=author_arg, project=project_arg, all=all)

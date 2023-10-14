@@ -88,3 +88,23 @@ def find_entries(
     # into an Entry instance (see converters)
     entries = [Entry(**row._asdict()) for row in rows]
     return entries
+
+
+def delete_entries(
+    con: sqlite3.Connection, *, author: str, project: Optional[str]
+) -> int:
+    """Delete all the rows in the entry table that match the given author and project.
+
+    If `project` is `None`, it will delete the rows for all the projects
+    """
+
+    query = "DELETE FROM entry WHERE author = ?"
+    params = [author]
+    if project is not None:
+        query += " AND project = ?"
+        params.append(project)
+
+    with con:
+        cur = con.execute(query, params)
+        n = cur.fetchone()
+    return int(n)
