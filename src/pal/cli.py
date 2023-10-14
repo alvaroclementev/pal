@@ -114,16 +114,18 @@ def project_or_default(requested_project: Optional[str]) -> str:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("text", help="Text for an entry", nargs="*")
+    parser.add_argument("-a", "--author", help="Author for the entry", default=None)
 
     args = parser.parse_args()  # noqa: F841
     text = args.text
+    author_arg = args.author
 
     # Run the right command
     if text:
         # Create a new entry
         setup.ensure_setup()
 
-        author = author_or_default(None)
+        author = author_or_default(author_arg)
         project = project_or_default(None)
         create_entry(" ".join(text), author=author, project=project)
     else:
@@ -133,7 +135,7 @@ def main():
 
         # Get the default author
         # TODO(alvaro): Add author CLI argument for display
-        author = author_or_default(None)
+        author = author_or_default(author_arg)
         project = project_or_default(None)
 
         display_entries(author=author, project=project, pretty=True)
