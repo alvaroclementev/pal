@@ -8,6 +8,9 @@ from typing import Optional
 from pal import db, models, setup
 from pal.models import entry
 
+PAL_COMMAND_COMMIT = "commit"
+PAL_COMMAND_LOG = "log"
+
 
 def init_db():
     """Initialize the Database with all the required tables"""
@@ -111,32 +114,69 @@ def project_or_default(requested_project: Optional[str]) -> str:
     return actual_project
 
 
+def handle_log(author: Optional[str], project: Optional[str]):
+    """Handle the `log` command for PAL"""
+
+    # Make sure PAL is setup
+    setup.ensure_setup()
+
+    # Prepare the DB for use
+    init_db()
+
+    # Get the default author
+    actual_author = author_or_default(author)
+    actual_project = project_or_default(project)
+
+    display_entries(author=actual_author, project=actual_project, pretty=True)
+
+
+def handle_commit(text: str, author: Optional[str], project: Optional[str]):
+    """Handle the `commit` command for PAL"""
+
+    # Make sure PAL is setup
+    setup.ensure_setup()
+
+    # Prepare the DB for use
+    init_db()
+
+    # Handle the default values for author and project
+    actual_author = author_or_default(author)
+    actual_project = project_or_default(project)
+
+    create_entry(text, author=actual_author, project=actual_project)
+
+
 def main():
     parser = argparse.ArgumentParser()
+
+    # Global options
     parser.add_argument("text", help="Text for an entry", nargs="*")
-    parser.add_argument("-a", "--author", help="Author for the entries", default=None)
-    parser.add_argument("-p", "--project", help="Project for the entries", default=None)
+    parser.add_argument("-a", "--author", help="Author of the entries", default=None)
+    parser.add_argument(
+        "-p", "--project", help="Project associated to the entries", default=None
+    )
+
+    subparser = parser.add_subparsers(dest="command", metavar="command")
+
+    # Prepare the commit
+    subparser.add_parser(PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log")
+
+    # Prepare the log
+    subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
 
     args = parser.parse_args()  # noqa: F841
-    text = args.text
+    command = args.command
+    text_args = args.text
     author_arg = args.author
     project_arg = args.project
 
-    # Run the right command
-    if text:
-        # Create a new entry
-        setup.ensure_setup()
+    # Handle implicit commands
+    if command is None:
+        command = PAL_COMMAND_COMMIT if text_args else PAL_COMMAND_LOG
 
-        author = author_or_default(author_arg)
-        project = project_or_default(project_arg)
-        create_entry(" ".join(text), author=author, project=project)
-    else:
-        # Just display the entries
-        init_db()
-        setup.ensure_setup()
-
-        # Get the default author
-        author = author_or_default(author_arg)
-        project = project_or_default(project_arg)
-
-        display_entries(author=author, project=project, pretty=True)
+    # Run the command
+    if command == PAL_COMMAND_LOG:
+        handle_log(author=author_arg, project=project_arg)
+    elif command == PAL_COMMAND_COMMIT:
+        text = " ".join(text_args)
+        handle_commit(text, author=author_arg, project=project_arg)
