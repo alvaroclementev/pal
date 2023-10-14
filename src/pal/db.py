@@ -6,7 +6,8 @@ import pathlib
 import sqlite3
 from collections import namedtuple
 
-from pal import setup, utils
+from pal import setup
+from pal.utils import dates
 
 
 # Register the adapters and converters
@@ -15,7 +16,7 @@ def adapt_datetime(value: datetime.datetime) -> str:
 
     If the value does not have a timezone, the local timezone is assumed.
     """
-    return utils.dt_make_aware(value).isoformat()
+    return dates.dt_make_aware(value).isoformat()
 
 
 def convert_datetime(value: bytes) -> datetime.datetime:
