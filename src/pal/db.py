@@ -1,11 +1,30 @@
 """Database related functions"""
 from __future__ import annotations
 
+import datetime
 import pathlib
 import sqlite3
 from collections import namedtuple
 
-from pal import setup
+from pal import setup, utils
+
+
+# Register the adapters and converters
+def adapt_datetime(value: datetime.datetime) -> str:
+    """Transform a timestamp into a ISO 8601 string.
+
+    If the value does not have a timezone, the local timezone is assumed.
+    """
+    return utils.dt_make_aware(value).isoformat()
+
+
+def convert_datetime(value: bytes) -> datetime.datetime:
+    """Convert a string representing a datetime in the DB into a datetime"""
+    return datetime.datetime.fromisoformat(value.decode())
+
+
+sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+sqlite3.register_converter("datetime", convert_datetime)
 
 
 def namedtuple_factory(cursor, row):
@@ -15,7 +34,7 @@ def namedtuple_factory(cursor, row):
     return cls._make(row)
 
 
-def get_connection(path: str | pathlib.Path | None) -> sqlite3.Connection:
+def get_connection(path: str | pathlib.Path | None = None) -> sqlite3.Connection:
     """Get a `sqlite3.Connection` to the default database"""
     db_path = path or setup.default_db_path()
     con = sqlite3.connect(str(db_path))
