@@ -13,6 +13,18 @@ class SetupError(Exception):
     pass
 
 
+def ensure_setup():
+    """Ensure that the basic setup is created.
+
+    This includes creating the PAL directory
+    """
+    print("ensuring setup")
+    pal_dir = default_pal_directory()
+    pal_dir.mkdir(exist_ok=True)
+    assert pal_dir.exists()
+    print("PAL directory: ", pal_dir.resolve())
+
+
 def default_pal_directory() -> pathlib.Path:
     """Return the default path for the PAL directory.
 
