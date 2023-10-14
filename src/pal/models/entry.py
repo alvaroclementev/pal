@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Optional
 
-from pal import utils
+from pal.utils import dates
 
 
 @dataclass
@@ -25,7 +25,7 @@ def insert_entry(con: sqlite3.Connection, entry: Entry) -> Entry:
     """Get the current entry and inserts it into the database"""
 
     # Prepare the common logic
-    now = utils.current_time()
+    now = dates.current_time()
     is_creation = entry.id is None
 
     if is_creation:
