@@ -74,7 +74,9 @@ def find_entries(
 ) -> list[Entry]:
     """Find the all the entries for a given project"""
     cur = con.cursor()
-    query = "SELECT * FROM entry WHERE author = ? AND project = ?"
+    query = (
+        "SELECT * FROM entry WHERE author = ? AND project = ? ORDER BY timestamp DESC"
+    )
     params = [author, project]
     if n is not None:
         query += " LIMIT ?"
