@@ -116,7 +116,6 @@ def find_entries(
         limit_fmt = ""
 
     query = query.format(filter=include_reported_fmt, limit=limit_fmt)
-    print("Executing query:", query)
 
     cur.execute(query, params)
     rows = cur.fetchall()
@@ -136,6 +135,27 @@ def delete_entries(
     """
 
     query = "DELETE FROM entry WHERE author = ?"
+    params = [author]
+    if project is not None:
+        query += " AND project = ?"
+        params.append(project)
+
+    with con:
+        cur = con.execute(query, params)
+        n = cur.rowcount
+    return int(n)
+
+
+def report_entries(
+    con: sqlite3.Connection, *, author: str, project: Optional[str]
+) -> int:
+    """Mark all the rows in the entry table that match the given author and project as
+    reported.
+
+    If `project` is `None`, it affect all entries for the given author
+    """
+
+    query = "UPDATE entry SET reported = 1 WHERE reported = 0 AND author = ?"
     params = [author]
     if project is not None:
         query += " AND project = ?"

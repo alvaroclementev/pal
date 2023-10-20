@@ -11,10 +11,12 @@ from rich.table import Table
 
 from pal import db, models, setup
 from pal.models import entry
+from pal.utils import interact
 
 PAL_COMMAND_COMMIT = "commit"
 PAL_COMMAND_LOG = "log"
 PAL_COMMAND_CLEAN = "clean"
+PAL_COMMAND_REPORT = "report"
 
 
 class OutputFormat(str, Enum):
@@ -49,15 +51,22 @@ def init_db():
         )
 
 
-def request_delete_confirmation(author: str, project: Optional[str]) -> bool:
-    """Request confirmation from the user"""
+def request_confirmation_delete(author: str, project: Optional[str]) -> bool:
+    """Request confirmation from the user for deletion action"""
     if project is None:
         msg = f"Delete all entries from '{author}'?"
     else:
-        msg = f"Delete all entries from '{author}' and project '{project}'?"
+        msg = f"Delete all entries from '{author}' in project '{project}'?"
+    return interact.ask_for_confirmation(msg)
 
-    answer = input(f"{msg} [y/N]: ")
-    return answer.lower() == "y"
+
+def request_confirmation_report(author: str, project: Optional[str]) -> bool:
+    """Request confirmation from the user for report action"""
+    if project is None:
+        msg = f"Mark all entries from '{author}' as reported?"
+    else:
+        msg = f"Mark all entries from '{author}' in project '{project}' as reported?"
+    return interact.ask_for_confirmation(msg)
 
 
 def create_entry(
@@ -131,13 +140,25 @@ def display_entries(
 def delete_entries(author: str, project: Optional[str]):
     """Remove the entries that belong to the given `author` and `project`.
 
-    If the `project` is `None`, this will remove all the entries for the given user
+    If the `project` is `None`, this will remove entries across all projects
     """
 
     # Find the entries
     con = db.get_connection()
     deleted = entry.delete_entries(con, author=author, project=project)
     print(f"{deleted} entries deleted")
+
+
+def report_entries(author: str, project: Optional[str]):
+    """Mark the entries that belong to the given `author` and `project` as reported.
+
+    If the `project` is `None`, this will report entries across all projects
+    """
+
+    # Find the entries
+    con = db.get_connection()
+    reported = entry.report_entries(con, author=author, project=project)
+    print(f"{reported} entries marked as reported")
 
 
 def author_or_default(requested_author: Optional[str]) -> str:
@@ -188,8 +209,26 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
     actual_project = None if all else project_or_default(project)
 
     # Ask for confirmation
-    if request_delete_confirmation(author=actual_author, project=actual_project):
+    if request_confirmation_delete(author=actual_author, project=actual_project):
         delete_entries(author=actual_author, project=actual_project)
+
+
+def handle_report(author: Optional[str], project: Optional[str], all: bool = False):
+    """Handle the `report` command for PAL"""
+
+    # Make sure PAL is setup
+    setup.ensure_setup()
+
+    # Prepare the DB for use
+    init_db()
+
+    # Handle the default values for author and project
+    actual_author = author_or_default(author)
+    actual_project = None if all else project_or_default(project)
+
+    # Ask for confirmation
+    if request_confirmation_report(author=actual_author, project=actual_project):
+        report_entries(author=actual_author, project=actual_project)
 
 
 def handle_log(
@@ -282,6 +321,9 @@ def main():
         action="store_true",
     )
 
+    # Prepare the report command
+    subparser.add_parser(PAL_COMMAND_REPORT, help="Handle report for entries")
+
     args = parser.parse_args()  # noqa: F841
     command = args.command
     author_arg = args.author
@@ -312,3 +354,7 @@ def main():
     elif command == PAL_COMMAND_CLEAN:
         all = args.all
         handle_clean(author=author_arg, project=project_arg, all=all)
+    elif command == PAL_COMMAND_REPORT:
+        handle_report(author=author_arg, project=project_arg)
+    else:
+        raise ValueError(f"invalid command {command!r}")
