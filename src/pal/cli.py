@@ -260,7 +260,9 @@ def main():
 
     # Run the command
     if command == PAL_COMMAND_LOG:
-        handle_log(author=author_arg, project=project_arg, json=args.json)
+        # If the log command is implicit, we don't have the arguments
+        json = getattr(args, "json", False)
+        handle_log(author=author_arg, project=project_arg, json=json)
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)
