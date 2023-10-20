@@ -252,6 +252,11 @@ def main():
     command = args.command
     author_arg = args.author
     project_arg = args.project
+    show_db = args.show_db
+
+    if show_db:
+        print(setup.default_db_path().resolve())
+        return
 
     # Handle implicit command
     command = command or PAL_COMMAND_LOG
