@@ -9,7 +9,7 @@ from typing import Optional
 from rich.console import Console
 from rich.table import Table
 
-from pal import db, models, setup
+from pal import __version__, db, models, setup
 from pal.models import entry
 from pal.utils import interact
 
@@ -291,6 +291,9 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Global options
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     parser.add_argument("-a", "--author", help="Author of the entries", default=None)
     parser.add_argument(
         "-p", "--project", help="Project associated to the entries", default=None
