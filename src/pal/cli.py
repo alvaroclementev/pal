@@ -26,8 +26,6 @@ class OutputFormat(str, Enum):
 
 def init_db():
     """Initialize the Database with all the required tables"""
-    print("initializing the db")
-
     # TODO(alvaro): We should check that the schema is the correct one...
     # although that would be heavy... maybe we can query the version of the DB
     # schema in some way, and have some migration path ready
@@ -254,13 +252,20 @@ def main():
     command = args.command
     author_arg = args.author
     project_arg = args.project
+    show_db = args.show_db
+
+    if show_db:
+        print(setup.default_db_path().resolve())
+        return
 
     # Handle implicit command
     command = command or PAL_COMMAND_LOG
 
     # Run the command
     if command == PAL_COMMAND_LOG:
-        handle_log(author=author_arg, project=project_arg, json=args.json)
+        # If the log command is implicit, we don't have the arguments
+        json = getattr(args, "json", False)
+        handle_log(author=author_arg, project=project_arg, json=json)
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)
