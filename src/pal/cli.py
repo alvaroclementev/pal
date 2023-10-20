@@ -213,7 +213,12 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
         delete_entries(author=actual_author, project=actual_project)
 
 
-def handle_report(author: Optional[str], project: Optional[str], all: bool = False):
+def handle_report(
+    author: Optional[str],
+    project: Optional[str],
+    all: bool = False,
+    auto_yes: bool = False,
+):
     """Handle the `report` command for PAL"""
 
     # Make sure PAL is setup
@@ -227,7 +232,9 @@ def handle_report(author: Optional[str], project: Optional[str], all: bool = Fal
     actual_project = None if all else project_or_default(project)
 
     # Ask for confirmation
-    if request_confirmation_report(author=actual_author, project=actual_project):
+    if auto_yes or request_confirmation_report(
+        author=actual_author, project=actual_project
+    ):
         report_entries(author=actual_author, project=actual_project)
 
 
@@ -322,7 +329,12 @@ def main():
     )
 
     # Prepare the report command
-    subparser.add_parser(PAL_COMMAND_REPORT, help="Handle report for entries")
+    report_subparser = subparser.add_parser(
+        PAL_COMMAND_REPORT, help="Handle report for entries"
+    )
+    report_subparser.add_argument(
+        "-y", "--yes", help="Skip confirmation prompt", action="store_true"
+    )
 
     args = parser.parse_args()  # noqa: F841
     command = args.command
@@ -355,6 +367,7 @@ def main():
         all = args.all
         handle_clean(author=author_arg, project=project_arg, all=all)
     elif command == PAL_COMMAND_REPORT:
-        handle_report(author=author_arg, project=project_arg)
+        yes = args.yes
+        handle_report(author=author_arg, project=project_arg, auto_yes=yes)
     else:
         raise ValueError(f"invalid command {command!r}")
