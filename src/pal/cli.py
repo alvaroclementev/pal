@@ -324,15 +324,21 @@ def main():
     clean_parser.add_argument(
         "-A",
         "--all",
-        help="Clean the entries for all projects for the selected",
+        help="Clean the entries for all projects for the selected author",
         action="store_true",
     )
 
     # Prepare the report command
-    report_subparser = subparser.add_parser(
+    report_parser = subparser.add_parser(
         PAL_COMMAND_REPORT, help="Handle report for entries"
     )
-    report_subparser.add_argument(
+    report_parser.add_argument(
+        "-A",
+        "--all",
+        help="Clean the entries across all projects for the selected author",
+        action="store_true",
+    )
+    report_parser.add_argument(
         "-y", "--yes", help="Skip confirmation prompt", action="store_true"
     )
 
@@ -367,7 +373,8 @@ def main():
         all = args.all
         handle_clean(author=author_arg, project=project_arg, all=all)
     elif command == PAL_COMMAND_REPORT:
+        all = args.all
         yes = args.yes
-        handle_report(author=author_arg, project=project_arg, auto_yes=yes)
+        handle_report(author=author_arg, project=project_arg, all=all, auto_yes=yes)
     else:
         raise ValueError(f"invalid command {command!r}")
