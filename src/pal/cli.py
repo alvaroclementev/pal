@@ -11,10 +11,12 @@ from rich.table import Table
 
 from pal import db, models, setup
 from pal.models import entry
+from pal.utils import interact
 
 PAL_COMMAND_COMMIT = "commit"
 PAL_COMMAND_LOG = "log"
 PAL_COMMAND_CLEAN = "clean"
+PAL_COMMAND_REPORT = "report"
 
 
 class OutputFormat(str, Enum):
@@ -41,6 +43,7 @@ def init_db():
                 author TEXT NOT NULL,
                 project TEXT NOT NULL,
                 timestamp STRING NOT NULL,
+                reported BOOLEAN DEFAULT 0 NOT NULL,
                 created_at STRING NOT NULL,
                 updated_at STRING NOT NULL
             );
@@ -48,15 +51,22 @@ def init_db():
         )
 
 
-def request_delete_confirmation(author: str, project: Optional[str]) -> bool:
-    """Request confirmation from the user"""
+def request_confirmation_delete(author: str, project: Optional[str]) -> bool:
+    """Request confirmation from the user for deletion action"""
     if project is None:
         msg = f"Delete all entries from '{author}'?"
     else:
-        msg = f"Delete all entries from '{author}' and project '{project}'?"
+        msg = f"Delete all entries from '{author}' in project '{project}'?"
+    return interact.ask_for_confirmation(msg)
 
-    answer = input(f"{msg} [y/N]: ")
-    return answer.lower() == "y"
+
+def request_confirmation_report(author: str, project: Optional[str]) -> bool:
+    """Request confirmation from the user for report action"""
+    if project is None:
+        msg = f"Mark all entries from '{author}' as reported?"
+    else:
+        msg = f"Mark all entries from '{author}' in project '{project}' as reported?"
+    return interact.ask_for_confirmation(msg)
 
 
 def create_entry(
@@ -88,12 +98,15 @@ def display_entries(
     pretty: bool = True,
     n: Optional[int] = None,
     format: OutputFormat = OutputFormat.RICH,
+    include_reported: bool = False,
 ):
     """Display the entries"""
 
     # Find the entries
     con = db.get_connection()
-    entries = entry.find_entries(con, author=author, project=project)
+    entries = entry.find_entries(
+        con, author=author, project=project, include_reported=include_reported
+    )
 
     if format == OutputFormat.JSON:
         import json
@@ -103,11 +116,19 @@ def display_entries(
         table = Table()
         table.add_column("timestamp", justify="right", style="yellow")
         table.add_column("project", style="green")
+        if include_reported:
+            table.add_column("reported", justify="center")
         table.add_column("text")
 
         for e in entries:
             timestamp_str = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            table.add_row(timestamp_str, e.project, e.text)
+            if include_reported:
+                reported_emoji = (
+                    ":white_heavy_check_mark:" if e.reported else ":cross_mark:"
+                )
+                table.add_row(timestamp_str, e.project, reported_emoji, e.text)
+            else:
+                table.add_row(timestamp_str, e.project, e.text)
 
         # Display the table
         console = Console()
@@ -119,13 +140,25 @@ def display_entries(
 def delete_entries(author: str, project: Optional[str]):
     """Remove the entries that belong to the given `author` and `project`.
 
-    If the `project` is `None`, this will remove all the entries for the given user
+    If the `project` is `None`, this will remove entries across all projects
     """
 
     # Find the entries
     con = db.get_connection()
     deleted = entry.delete_entries(con, author=author, project=project)
     print(f"{deleted} entries deleted")
+
+
+def report_entries(author: str, project: Optional[str]):
+    """Mark the entries that belong to the given `author` and `project` as reported.
+
+    If the `project` is `None`, this will report entries across all projects
+    """
+
+    # Find the entries
+    con = db.get_connection()
+    reported = entry.report_entries(con, author=author, project=project)
+    print(f"{reported} entries marked as reported")
 
 
 def author_or_default(requested_author: Optional[str]) -> str:
@@ -162,7 +195,9 @@ def project_or_default(requested_project: Optional[str]) -> str:
     return actual_project
 
 
-def handle_clean(author: Optional[str], project: Optional[str], all: bool):
+def handle_clean(
+    author: Optional[str], project: Optional[str], all: bool, auto_yes: bool = False
+):
     """Handle the `clean` command for PAL"""
 
     # Make sure PAL is setup
@@ -176,11 +211,43 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
     actual_project = None if all else project_or_default(project)
 
     # Ask for confirmation
-    if request_delete_confirmation(author=actual_author, project=actual_project):
+    if auto_yes or request_confirmation_delete(
+        author=actual_author, project=actual_project
+    ):
         delete_entries(author=actual_author, project=actual_project)
 
 
-def handle_log(author: Optional[str], project: Optional[str], json: bool = False):
+def handle_report(
+    author: Optional[str],
+    project: Optional[str],
+    all: bool = False,
+    auto_yes: bool = False,
+):
+    """Handle the `report` command for PAL"""
+
+    # Make sure PAL is setup
+    setup.ensure_setup()
+
+    # Prepare the DB for use
+    init_db()
+
+    # Handle the default values for author and project
+    actual_author = author_or_default(author)
+    actual_project = None if all else project_or_default(project)
+
+    # Ask for confirmation
+    if auto_yes or request_confirmation_report(
+        author=actual_author, project=actual_project
+    ):
+        report_entries(author=actual_author, project=actual_project)
+
+
+def handle_log(
+    author: Optional[str],
+    project: Optional[str],
+    json: bool = False,
+    include_reported: bool = False,
+):
     """Handle the `log` command for PAL"""
 
     # Make sure PAL is setup
@@ -196,7 +263,11 @@ def handle_log(author: Optional[str], project: Optional[str], json: bool = False
     format = OutputFormat.JSON if json else OutputFormat.RICH
 
     display_entries(
-        author=actual_author, project=actual_project, pretty=True, format=format
+        author=actual_author,
+        project=actual_project,
+        pretty=True,
+        format=format,
+        include_reported=include_reported,
     )
 
 
@@ -224,6 +295,11 @@ def main():
     parser.add_argument(
         "-p", "--project", help="Project associated to the entries", default=None
     )
+    parser.add_argument(
+        "--show-db",
+        help="Show the full path to the DB file and exit",
+        action="store_true",
+    )
 
     subparser = parser.add_subparsers(dest="command", metavar="command")
 
@@ -231,12 +307,20 @@ def main():
     commit_parser = subparser.add_parser(
         PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log"
     )
-    commit_parser.add_argument("body", help="Body for the entry to commit", nargs="*")
+    commit_parser.add_argument(
+        "text", help="Text for the body of the entry to commit", nargs="*"
+    )
 
     # Prepare the log command
     log_parser = subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
     log_parser.add_argument(
         "--json", help="output the log in JSON format", action="store_true"
+    )
+    log_parser.add_argument(
+        "-r",
+        "--include-reported",
+        help="Include entries already marked as reported",
+        action="store_true",
     )
 
     # Prepare the clean command
@@ -244,8 +328,25 @@ def main():
     clean_parser.add_argument(
         "-A",
         "--all",
-        help="Clean the entries for all projects for the selected",
+        help="Clean the entries for all projects for the selected author",
         action="store_true",
+    )
+    clean_parser.add_argument(
+        "-y", "--yes", help="Skip confirmation prompt", action="store_true"
+    )
+
+    # Prepare the report command
+    report_parser = subparser.add_parser(
+        PAL_COMMAND_REPORT, help="Handle report for entries"
+    )
+    report_parser.add_argument(
+        "-A",
+        "--all",
+        help="Clean the entries across all projects for the selected author",
+        action="store_true",
+    )
+    report_parser.add_argument(
+        "-y", "--yes", help="Skip confirmation prompt", action="store_true"
     )
 
     args = parser.parse_args()  # noqa: F841
@@ -265,10 +366,23 @@ def main():
     if command == PAL_COMMAND_LOG:
         # If the log command is implicit, we don't have the arguments
         json = getattr(args, "json", False)
-        handle_log(author=author_arg, project=project_arg, json=json)
+        include_reported = getattr(args, "include_reported", False)
+        handle_log(
+            author=author_arg,
+            project=project_arg,
+            json=json,
+            include_reported=include_reported,
+        )
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)
     elif command == PAL_COMMAND_CLEAN:
         all = args.all
-        handle_clean(author=author_arg, project=project_arg, all=all)
+        yes = args.yes
+        handle_clean(author=author_arg, project=project_arg, all=all, auto_yes=yes)
+    elif command == PAL_COMMAND_REPORT:
+        all = args.all
+        yes = args.yes
+        handle_report(author=author_arg, project=project_arg, all=all, auto_yes=yes)
+    else:
+        raise ValueError(f"invalid command {command!r}")

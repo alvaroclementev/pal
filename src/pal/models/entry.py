@@ -15,6 +15,7 @@ class Entry:
     author: str
     project: str
     timestamp: datetime.datetime
+    reported: bool = False
     # Fields that are filled automatically during DB insertion
     id: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
@@ -94,17 +95,28 @@ def find_by_rowid(con: sqlite3.Connection, rowid: int) -> Entry:
 
 
 def find_entries(
-    con: sqlite3.Connection, *, author: str, project: str, n: Optional[int] = None
+    con: sqlite3.Connection,
+    *,
+    author: str,
+    project: str,
+    n: Optional[int] = None,
+    include_reported: bool = False,
 ) -> list[Entry]:
     """Find the all the entries for a given project"""
     cur = con.cursor()
-    query = (
-        "SELECT * FROM entry WHERE author = ? AND project = ? ORDER BY timestamp DESC"
-    )
+    query = "SELECT * FROM entry WHERE author = ? AND project = ? {filter} ORDER BY timestamp DESC {limit}"
     params = [author, project]
+
+    include_reported_fmt = "" if include_reported else "AND reported = 0"
+
     if n is not None:
-        query += " LIMIT ?"
+        limit_fmt = " LIMIT ?"
         params.append(str(n))
+    else:
+        limit_fmt = ""
+
+    query = query.format(filter=include_reported_fmt, limit=limit_fmt)
+
     cur.execute(query, params)
     rows = cur.fetchall()
     # Transform into an Entry instance
@@ -123,6 +135,27 @@ def delete_entries(
     """
 
     query = "DELETE FROM entry WHERE author = ?"
+    params = [author]
+    if project is not None:
+        query += " AND project = ?"
+        params.append(project)
+
+    with con:
+        cur = con.execute(query, params)
+        n = cur.rowcount
+    return int(n)
+
+
+def report_entries(
+    con: sqlite3.Connection, *, author: str, project: Optional[str]
+) -> int:
+    """Mark all the rows in the entry table that match the given author and project as
+    reported.
+
+    If `project` is `None`, it affect all entries for the given author
+    """
+
+    query = "UPDATE entry SET reported = 1 WHERE reported = 0 AND author = ?"
     params = [author]
     if project is not None:
         query += " AND project = ?"
