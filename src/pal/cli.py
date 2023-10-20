@@ -41,6 +41,7 @@ def init_db():
                 author TEXT NOT NULL,
                 project TEXT NOT NULL,
                 timestamp STRING NOT NULL,
+                reported BOOLEAN DEFAULT 0 NOT NULL,
                 created_at STRING NOT NULL,
                 updated_at STRING NOT NULL
             );
@@ -88,12 +89,15 @@ def display_entries(
     pretty: bool = True,
     n: Optional[int] = None,
     format: OutputFormat = OutputFormat.RICH,
+    include_reported: bool = False,
 ):
     """Display the entries"""
 
     # Find the entries
     con = db.get_connection()
-    entries = entry.find_entries(con, author=author, project=project)
+    entries = entry.find_entries(
+        con, author=author, project=project, include_reported=include_reported
+    )
 
     if format == OutputFormat.JSON:
         import json
@@ -103,11 +107,19 @@ def display_entries(
         table = Table()
         table.add_column("timestamp", justify="right", style="yellow")
         table.add_column("project", style="green")
+        if include_reported:
+            table.add_column("reported", justify="center")
         table.add_column("text")
 
         for e in entries:
             timestamp_str = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            table.add_row(timestamp_str, e.project, e.text)
+            if include_reported:
+                reported_emoji = (
+                    ":white_heavy_check_mark:" if e.reported else ":cross_mark:"
+                )
+                table.add_row(timestamp_str, e.project, reported_emoji, e.text)
+            else:
+                table.add_row(timestamp_str, e.project, e.text)
 
         # Display the table
         console = Console()
@@ -180,7 +192,12 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
         delete_entries(author=actual_author, project=actual_project)
 
 
-def handle_log(author: Optional[str], project: Optional[str], json: bool = False):
+def handle_log(
+    author: Optional[str],
+    project: Optional[str],
+    json: bool = False,
+    include_reported: bool = False,
+):
     """Handle the `log` command for PAL"""
 
     # Make sure PAL is setup
@@ -196,7 +213,11 @@ def handle_log(author: Optional[str], project: Optional[str], json: bool = False
     format = OutputFormat.JSON if json else OutputFormat.RICH
 
     display_entries(
-        author=actual_author, project=actual_project, pretty=True, format=format
+        author=actual_author,
+        project=actual_project,
+        pretty=True,
+        format=format,
+        include_reported=include_reported,
     )
 
 
@@ -224,6 +245,9 @@ def main():
     parser.add_argument(
         "-p", "--project", help="Project associated to the entries", default=None
     )
+    parser.add_argument(
+        "--show-db", help="Show the full path to the DB file", action="store_true"
+    )
 
     subparser = parser.add_subparsers(dest="command", metavar="command")
 
@@ -231,12 +255,20 @@ def main():
     commit_parser = subparser.add_parser(
         PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log"
     )
-    commit_parser.add_argument("body", help="Body for the entry to commit", nargs="*")
+    commit_parser.add_argument(
+        "text", help="Text for the body of the entry to commit", nargs="*"
+    )
 
     # Prepare the log command
     log_parser = subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
     log_parser.add_argument(
         "--json", help="output the log in JSON format", action="store_true"
+    )
+    log_parser.add_argument(
+        "-r",
+        "--include-reported",
+        help="Include entries already marked as reported",
+        action="store_true",
     )
 
     # Prepare the clean command
@@ -265,7 +297,13 @@ def main():
     if command == PAL_COMMAND_LOG:
         # If the log command is implicit, we don't have the arguments
         json = getattr(args, "json", False)
-        handle_log(author=author_arg, project=project_arg, json=json)
+        include_reported = getattr(args, "include_reported", False)
+        handle_log(
+            author=author_arg,
+            project=project_arg,
+            json=json,
+            include_reported=include_reported,
+        )
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)

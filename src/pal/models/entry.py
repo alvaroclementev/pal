@@ -15,6 +15,7 @@ class Entry:
     author: str
     project: str
     timestamp: datetime.datetime
+    reported: bool = False
     # Fields that are filled automatically during DB insertion
     id: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
@@ -94,17 +95,29 @@ def find_by_rowid(con: sqlite3.Connection, rowid: int) -> Entry:
 
 
 def find_entries(
-    con: sqlite3.Connection, *, author: str, project: str, n: Optional[int] = None
+    con: sqlite3.Connection,
+    *,
+    author: str,
+    project: str,
+    n: Optional[int] = None,
+    include_reported: bool = False,
 ) -> list[Entry]:
     """Find the all the entries for a given project"""
     cur = con.cursor()
-    query = (
-        "SELECT * FROM entry WHERE author = ? AND project = ? ORDER BY timestamp DESC"
-    )
+    query = "SELECT * FROM entry WHERE author = ? AND project = ? {filter} ORDER BY timestamp DESC {limit}"
     params = [author, project]
+
+    include_reported_fmt = "" if include_reported else "AND reported = 0"
+
     if n is not None:
-        query += " LIMIT ?"
+        limit_fmt = " LIMIT ?"
         params.append(str(n))
+    else:
+        limit_fmt = ""
+
+    query = query.format(filter=include_reported_fmt, limit=limit_fmt)
+    print("Executing query:", query)
+
     cur.execute(query, params)
     rows = cur.fetchall()
     # Transform into an Entry instance
