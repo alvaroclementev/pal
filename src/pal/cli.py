@@ -179,7 +179,6 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Global options
-    parser.add_argument("text", help="Text for an entry", nargs="*")
     parser.add_argument("-a", "--author", help="Author of the entries", default=None)
     parser.add_argument(
         "-p", "--project", help="Project associated to the entries", default=None
@@ -188,7 +187,10 @@ def main():
     subparser = parser.add_subparsers(dest="command", metavar="command")
 
     # Prepare the commit command
-    subparser.add_parser(PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log")
+    commit_parser = subparser.add_parser(
+        PAL_COMMAND_COMMIT, help="Commit a new entry to the PAL log"
+    )
+    commit_parser.add_argument("body", help="Body for the entry to commit", nargs="*")
 
     # Prepare the log command
     subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
@@ -201,19 +203,17 @@ def main():
 
     args = parser.parse_args()  # noqa: F841
     command = args.command
-    text_args = args.text
     author_arg = args.author
     project_arg = args.project
 
-    # Handle implicit commands
-    if command is None:
-        command = PAL_COMMAND_COMMIT if text_args else PAL_COMMAND_LOG
+    # Handle implicit command
+    command = command or PAL_COMMAND_LOG
 
     # Run the command
     if command == PAL_COMMAND_LOG:
         handle_log(author=author_arg, project=project_arg)
     elif command == PAL_COMMAND_COMMIT:
-        text = " ".join(text_args)
+        text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)
     elif command == PAL_COMMAND_CLEAN:
         all = args.all
