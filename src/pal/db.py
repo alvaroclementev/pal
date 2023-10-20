@@ -10,7 +10,7 @@ from pal import setup
 from pal.utils import dates
 
 
-# Register the adapters and converters
+# Register the adapter
 def adapt_datetime(value: datetime.datetime) -> str:
     """Transform a timestamp into a ISO 8601 string.
 
@@ -19,13 +19,7 @@ def adapt_datetime(value: datetime.datetime) -> str:
     return dates.dt_make_aware(value).isoformat()
 
 
-def convert_datetime(value: bytes) -> datetime.datetime:
-    """Convert a string representing a datetime in the DB into a datetime"""
-    return datetime.datetime.fromisoformat(value.decode())
-
-
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
-sqlite3.register_converter("datetime", convert_datetime)
 
 
 def namedtuple_factory(cursor, row):
