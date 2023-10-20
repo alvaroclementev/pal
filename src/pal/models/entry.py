@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Optional
 
 from pal.utils import dates
@@ -19,6 +19,20 @@ class Entry:
     id: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
+
+    def to_json(self) -> dict:
+        result = asdict(self)
+
+        # Convert datetimes to strings
+        result["timestamp"] = result["timestamp"].isoformat()
+        result["created_at"] = (
+            result["created_at"].isoformat() if result["created_at"] else None
+        )
+        result["updated_at"] = (
+            result["updated_at"].isoformat() if result["updated_at"] else None
+        )
+
+        return result
 
     def __post_init__(self):
         # Since SQLite does not store dates natively, when one is read we need to make

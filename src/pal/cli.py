@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import os
+from enum import Enum
 from typing import Optional
 
 from rich.console import Console
@@ -14,6 +15,13 @@ from pal.models import entry
 PAL_COMMAND_COMMIT = "commit"
 PAL_COMMAND_LOG = "log"
 PAL_COMMAND_CLEAN = "clean"
+
+
+class OutputFormat(str, Enum):
+    """Supported output formats for log"""
+
+    RICH = "rich"
+    JSON = "json"
 
 
 def init_db():
@@ -77,7 +85,11 @@ def create_entry(
 
 
 def display_entries(
-    author: str, project: str, pretty: bool = True, n: Optional[int] = None
+    author: str,
+    project: str,
+    pretty: bool = True,
+    n: Optional[int] = None,
+    format: OutputFormat = OutputFormat.RICH,
 ):
     """Display the entries"""
 
@@ -85,18 +97,25 @@ def display_entries(
     con = db.get_connection()
     entries = entry.find_entries(con, author=author, project=project)
 
-    table = Table()
-    table.add_column("timestamp", justify="right", style="yellow")
-    table.add_column("project", style="green")
-    table.add_column("text")
+    if format == OutputFormat.JSON:
+        import json
 
-    for e in entries:
-        timestamp_str = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        table.add_row(timestamp_str, e.project, e.text)
+        print(json.dumps([e.to_json() for e in entries]))
+    elif format == OutputFormat.RICH:
+        table = Table()
+        table.add_column("timestamp", justify="right", style="yellow")
+        table.add_column("project", style="green")
+        table.add_column("text")
 
-    # Display the table
-    console = Console()
-    console.print(table)
+        for e in entries:
+            timestamp_str = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            table.add_row(timestamp_str, e.project, e.text)
+
+        # Display the table
+        console = Console()
+        console.print(table)
+    else:
+        raise ValueError(f"invalid output format: {format!r}")
 
 
 def delete_entries(author: str, project: Optional[str]):
@@ -163,7 +182,7 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
         delete_entries(author=actual_author, project=actual_project)
 
 
-def handle_log(author: Optional[str], project: Optional[str]):
+def handle_log(author: Optional[str], project: Optional[str], json: bool = False):
     """Handle the `log` command for PAL"""
 
     # Make sure PAL is setup
@@ -176,7 +195,11 @@ def handle_log(author: Optional[str], project: Optional[str]):
     actual_author = author_or_default(author)
     actual_project = project_or_default(project)
 
-    display_entries(author=actual_author, project=actual_project, pretty=True)
+    format = OutputFormat.JSON if json else OutputFormat.RICH
+
+    display_entries(
+        author=actual_author, project=actual_project, pretty=True, format=format
+    )
 
 
 def handle_commit(text: str, author: Optional[str], project: Optional[str]):
@@ -213,7 +236,10 @@ def main():
     commit_parser.add_argument("body", help="Body for the entry to commit", nargs="*")
 
     # Prepare the log command
-    subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
+    log_parser = subparser.add_parser(PAL_COMMAND_LOG, help="Show the activity log")
+    log_parser.add_argument(
+        "--json", help="output the log in JSON format", action="store_true"
+    )
 
     # Prepare the clean command
     clean_parser = subparser.add_parser(PAL_COMMAND_CLEAN, help="Clean the log entries")
@@ -234,7 +260,7 @@ def main():
 
     # Run the command
     if command == PAL_COMMAND_LOG:
-        handle_log(author=author_arg, project=project_arg)
+        handle_log(author=author_arg, project=project_arg, json=args.json)
     elif command == PAL_COMMAND_COMMIT:
         text = " ".join(args.text)
         handle_commit(text, author=author_arg, project=project_arg)
