@@ -26,8 +26,6 @@ class OutputFormat(str, Enum):
 
 def init_db():
     """Initialize the Database with all the required tables"""
-    print("initializing the db")
-
     # TODO(alvaro): We should check that the schema is the correct one...
     # although that would be heavy... maybe we can query the version of the DB
     # schema in some way, and have some migration path ready
