@@ -106,5 +106,5 @@ def delete_entries(
 
     with con:
         cur = con.execute(query, params)
-        n = cur.fetchone()
+        n = cur.rowcount
     return int(n)

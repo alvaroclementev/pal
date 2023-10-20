@@ -39,6 +39,17 @@ def init_db():
         )
 
 
+def request_delete_confirmation(author: str, project: Optional[str]) -> bool:
+    """Request confirmation from the user"""
+    if project is None:
+        msg = f"Delete all entries from '{author}'?"
+    else:
+        msg = f"Delete all entries from '{author}' and project '{project}'?"
+
+    answer = input(f"{msg} [y/N]: ")
+    return answer.lower() == "y"
+
+
 def create_entry(
     text: str, author: str, project: str, timestamp: Optional[datetime.datetime] = None
 ) -> models.Entry:
@@ -128,7 +139,7 @@ def project_or_default(requested_project: Optional[str]) -> str:
     return actual_project
 
 
-def handle_clean(text: str, author: Optional[str], project: Optional[str], all: bool):
+def handle_clean(author: Optional[str], project: Optional[str], all: bool):
     """Handle the `clean` command for PAL"""
 
     # Make sure PAL is setup
@@ -140,7 +151,10 @@ def handle_clean(text: str, author: Optional[str], project: Optional[str], all: 
     # Handle the default values for author and project
     actual_author = author_or_default(author)
     actual_project = None if all else project_or_default(project)
-    delete_entries(author=actual_author, project=actual_project)
+
+    # Ask for confirmation
+    if request_delete_confirmation(author=actual_author, project=actual_project):
+        delete_entries(author=actual_author, project=actual_project)
 
 
 def handle_log(author: Optional[str], project: Optional[str]):
@@ -198,7 +212,10 @@ def main():
     # Prepare the clean command
     clean_parser = subparser.add_parser(PAL_COMMAND_CLEAN, help="Clean the log entries")
     clean_parser.add_argument(
-        "-A", "--all", help="Clean the entries for all projects for the selected"
+        "-A",
+        "--all",
+        help="Clean the entries for all projects for the selected",
+        action="store_true",
     )
 
     args = parser.parse_args()  # noqa: F841
