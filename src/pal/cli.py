@@ -111,7 +111,7 @@ def display_entries(
     if format == OutputFormat.JSON:
         import json
 
-        print(json.dumps([e.to_json() for e in entries]))
+        print(json.dumps([e.to_json(include_id=False) for e in entries]))
     elif format == OutputFormat.RICH:
         table = Table()
         table.add_column("timestamp", justify="right", style="yellow")
