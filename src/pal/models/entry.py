@@ -21,7 +21,7 @@ class Entry:
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
-    def to_json(self) -> dict:
+    def to_json(self, include_id: bool = True) -> dict:
         result = asdict(self)
 
         # Convert datetimes to strings
@@ -32,6 +32,9 @@ class Entry:
         result["updated_at"] = (
             result["updated_at"].isoformat() if result["updated_at"] else None
         )
+
+        if not include_id:
+            del result["id"]
 
         return result
 
