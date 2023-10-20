@@ -49,16 +49,25 @@ See the [Usage Guide](#usage-guide) for more information and advanced usage.
 
 ## Installation
 
-For now, you must install `pal` directly from github. 
+`pal` is distributed as a Python package. You can install it using `pip` at `pal-log`:
 
-Clone this repo and run: 
+```sh
+$ pip install pal-log
+```
+
+At this point you can start using `pal` normally.
+
+```sh
+$ pal
+```
+
+An alternative way is to use the github repo directly. For that, clone this repo and run: 
 
 ```sh
 $ pip install .
 ```
 
-At this point you can start using `pal` normally.
-
+And the `pal` executable should be ready for use.
 
 ## Development
 
