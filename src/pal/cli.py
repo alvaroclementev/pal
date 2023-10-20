@@ -246,7 +246,9 @@ def main():
         "-p", "--project", help="Project associated to the entries", default=None
     )
     parser.add_argument(
-        "--show-db", help="Show the full path to the DB file", action="store_true"
+        "--show-db",
+        help="Show the full path to the DB file and exit",
+        action="store_true",
     )
 
     subparser = parser.add_subparsers(dest="command", metavar="command")
