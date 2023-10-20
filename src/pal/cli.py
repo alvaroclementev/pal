@@ -195,7 +195,9 @@ def project_or_default(requested_project: Optional[str]) -> str:
     return actual_project
 
 
-def handle_clean(author: Optional[str], project: Optional[str], all: bool):
+def handle_clean(
+    author: Optional[str], project: Optional[str], all: bool, auto_yes: bool = False
+):
     """Handle the `clean` command for PAL"""
 
     # Make sure PAL is setup
@@ -209,7 +211,9 @@ def handle_clean(author: Optional[str], project: Optional[str], all: bool):
     actual_project = None if all else project_or_default(project)
 
     # Ask for confirmation
-    if request_confirmation_delete(author=actual_author, project=actual_project):
+    if auto_yes or request_confirmation_delete(
+        author=actual_author, project=actual_project
+    ):
         delete_entries(author=actual_author, project=actual_project)
 
 
@@ -327,6 +331,9 @@ def main():
         help="Clean the entries for all projects for the selected author",
         action="store_true",
     )
+    clean_parser.add_argument(
+        "-y", "--yes", help="Skip confirmation prompt", action="store_true"
+    )
 
     # Prepare the report command
     report_parser = subparser.add_parser(
@@ -371,7 +378,8 @@ def main():
         handle_commit(text, author=author_arg, project=project_arg)
     elif command == PAL_COMMAND_CLEAN:
         all = args.all
-        handle_clean(author=author_arg, project=project_arg, all=all)
+        yes = args.yes
+        handle_clean(author=author_arg, project=project_arg, all=all, auto_yes=yes)
     elif command == PAL_COMMAND_REPORT:
         all = args.all
         yes = args.yes
