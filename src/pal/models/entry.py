@@ -20,6 +20,16 @@ class Entry:
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
+    def __post_init__(self):
+        # Since SQLite does not store dates natively, when one is read we need to make
+        # sure we transform it
+        if isinstance(self.timestamp, str):
+            self.timestamp = datetime.datetime.fromisoformat(self.timestamp)
+        if isinstance(self.created_at, str):
+            self.created_at = datetime.datetime.fromisoformat(self.created_at)
+        if isinstance(self.updated_at, str):
+            self.updated_at = datetime.datetime.fromisoformat(self.updated_at)
+
 
 def insert_entry(con: sqlite3.Connection, entry: Entry) -> Entry:
     """Get the current entry and inserts it into the database"""

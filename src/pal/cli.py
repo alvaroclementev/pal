@@ -5,6 +5,9 @@ import datetime
 import os
 from typing import Optional
 
+from rich.console import Console
+from rich.table import Table
+
 from pal import db, models, setup
 from pal.models import entry
 
@@ -82,15 +85,18 @@ def display_entries(
     con = db.get_connection()
     entries = entry.find_entries(con, author=author, project=project)
 
-    # Format the entries
-    for i, e in enumerate(entries):
-        header = f"{e.author} - {e.project} - {e.timestamp}"
-        print(header)
-        print("".join(["-"] * len(header)))
-        print(e.text)
+    table = Table()
+    table.add_column("timestamp", justify="right", style="yellow")
+    table.add_column("project", style="green")
+    table.add_column("text")
 
-        if i != len(entries):
-            print()
+    for e in entries:
+        timestamp_str = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        table.add_row(timestamp_str, e.project, e.text)
+
+    # Display the table
+    console = Console()
+    console.print(table)
 
 
 def delete_entries(author: str, project: Optional[str]):
